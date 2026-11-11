@@ -22,9 +22,21 @@ export function demoSong(): Song {
   }
   return { notes, tracks: ['MELODY', 'CHORDS', 'BASS'], duration: 16, bpm: 120, variableTempo: false };
 }
+function createPlaybackContext(): AudioContext {
+  // iOS otherwise treats Web Audio as ambient: the silent switch mutes the
+  // speakers even while the context clock and analyser keep running.
+  // Select the session before creating the output, including during recovery.
+  try {
+    const session = (globalThis.navigator as Navigator & { audioSession?: { type: string } } | undefined)?.audioSession;
+    if (session) session.type = 'playback';
+  } catch {
+    // Audio Session is optional; a missing or restricted API must not block audio.
+  }
+  return new AudioContext();
+}
 // A single AudioContext clock drives both the buffer and the canvas playhead.
 export class Transport {
-  context = new AudioContext();
+  context = createPlaybackContext();
   buffer: AudioBuffer | null = null;
   source: AudioBufferSourceNode | null = null;
   gain = this.context.createGain();
